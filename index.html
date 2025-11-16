@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>实时音调检测器 - 演示版</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+
+        .status-panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 15px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #6c757d;
+        }
+
+        .status-dot.recording {
+            background: #dc3545;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .pitch-display {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 30px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 15px;
+            color: white;
+        }
+
+        .frequency-display {
+            text-align: center;
+        }
+
+        .frequency-value {
+            font-size: 3rem;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+        }
+
+        .frequency-unit {
+            font-size: 1.2rem;
+            opacity: 0.8;
+        }
+
+        .note-display {
+            text-align: center;
+        }
+
+        .note-name {
+            font-size: 4rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .octave {
+            font-size: 1.5rem;
+            opacity: 0.8;
+        }
+
+        .control-panel {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            font-size: 1.1rem;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 0 10px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #007bff;
+            color: white;
+        }
+
+        .btn:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .instructions {
+            background: #e9ecef;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .instructions h3 {
+            margin-bottom: 15px;
+            color: #495057;
+        }
+
+        .instructions ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .instructions li {
+            padding: 5px 0;
+            padding-left: 25px;
+            position: relative;
+        }
+
+        .instructions li:before {
+            content: "•";
+            color: #007bff;
+            font-weight: bold;
+            position: absolute;
+            left: 10px;
+        }
+
+        /* 移动端优化 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .pitch-display {
+                flex-direction: column;
+                gap: 20px;
+            }
+            
+            .frequency-value {
+                font-size: 2.5rem;
+            }
+            
+            .note-name {
+                font-size: 3rem;
+            }
+            
+            .btn {
+                padding: 10px 20px;
+                font-size: 1rem;
+                margin: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1><i class="fas fa-music"></i> 实时音调检测器</h1>
+            <p class="subtitle">交互式演示版本</p >
+        </header>
+
+        <main class="main-content">
+            <div class="status-panel">
+                <div class="status-indicator">
+                    <div class="status-dot" id="statusDot"></div>
+                    <span id="statusText">等待开始</span>
+                </div>
+            </div>
+
+            <div class="pitch-display">
+                <div class="frequency-display">
+                    <div class="frequency-value" id="frequencyValue">--</div>
+                    <div class="frequency-unit">Hz</div>
+                </div>
+                
+                <div class="note-display">
+                    <div class="note-name" id="noteName">--</div>
+                    <div class="octave" id="octaveDisplay"></div>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <button id="demoBtn" class="btn">
+                    <i class="fas fa-play"></i> 开始演示
+                </button>
+                <button id="stopBtn" class="btn" disabled>
+                    <i class="fas fa-stop"></i> 停止演示
+                </button>
+            </div>
+
+            <div class="instructions">
+                <h3><i class="fas fa-info-circle"></i> 使用说明</h3>
+                <ul>
+                    <li>点击"开始演示"按钮体验音调检测模拟</li>
+                    <li>系统会模拟显示不同音调和音符</li>
+                    <li>完整功能需要部署后端服务器</li>
+                    <li>支持移动端和电脑端访问</li>
+                </ul>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        class PitchDetectorDemo {
+            constructor() {
+                this.isRunning = false;
+                this.demoInterval = null;
+                this.notes = [
+                    {freq: 261.63, note: 'C', octave: '4'},
+                    {freq: 293.66, note: 'D', octave: '4'},
+                    {freq: 329.63, note: 'E', octave: '4'},
+                    {freq: 349.23, note: 'F', octave: '4'},
+                    {freq: 392.00, note: 'G', octave: '4'},
+                    {freq: 440.00, note: 'A', octave: '4'},
+                    {freq: 493.88, note: 'B', octave: '4'},
+                    {freq: 523.25, note: 'C', octave: '5'}
+                ];
+                
+                this.initialize();
+            }
+
+            initialize() {
+                this.startBtn = document.getElementById('demoBtn');
+                this.stopBtn = document.getElementById('stopBtn');
+                this.statusDot = document.getElementById('statusDot');
+                this.statusText = document.getElementById('statusText');
+                this.frequencyValue = document.getElementById('frequencyValue');
+                this.noteName = document.getElementById('noteName');
+                this.octaveDisplay = document.getElementById('octaveDisplay');
+
+                this.startBtn.addEventListener('click', () => this.startDemo());
+                this.stopBtn.addEventListener('click', () => this.stopDemo());
+            }
+
+            startDemo() {
+                this.isRunning = true;
+                this.updateUI();
+                
+                let index = 0;
+                this.demoInterval = setInterval(() => {
+                    const note = this.notes[index];
+                    
+                    // 更新显示
+                    this.frequencyValue.textContent = note.freq.toFixed(2);
+                    this.noteName.textContent = note.note;
+                    this.octaveDisplay.textContent = note.octave;
+                    
+                    // 模拟音量变化
+                    this.statusText.textContent = `检测中 - 音量: ${Math.floor(Math.random() * 50 + 30)}%`;
+                    
+                    index = (index + 1) % this.notes.length;
+                    
+                    // 偶尔模拟静音
+                    if (Math.random() < 0.2) {
+                        setTimeout(() => {
+                            this.frequencyValue.textContent = '--';
+                            this.noteName.textContent = '--';
+                            this.octaveDisplay.textContent = '';
+                            this.statusText.textContent = '静音中';
+                        }, 800);
+                    }
+                }, 1500);
+            }
+
+            stopDemo() {
+                this.isRunning = false;
+                clearInterval(this.demoInterval);
+                this.resetDisplay();
+                this.updateUI();
+            }
+
+            updateUI() {
+                if (this.isRunning) {
+                    this.startBtn.disabled = true;
+                    this.stopBtn.disabled = false;
+                    this.statusDot.className = 'status-dot recording';
+                    this.statusText.textContent = '演示中...';
+                } else {
+                    this.startBtn.disabled = false;
+                    this.stopBtn.disabled = true;
+                    this.statusDot.className = 'status-dot';
+                    this.statusText.textContent = '等待开始';
+                }
+            }
+
+            resetDisplay() {
+                this.frequencyValue.textContent = '--';
+                this.noteName.textContent = '--';
+                this.octaveDisplay.textContent = '';
+            }
+        }
+
+        // 初始化应用
+        document.addEventListener('DOMContentLoaded', () => {
+            new PitchDetectorDemo();
+        });
+    </script>
+</body>
+</html>
